@@ -1,4 +1,4 @@
-name: password_manager
+name: passwordmanager
 description: A secure password management application with Firebase backend
 publish_to: 'none'
 version: 1.0.0+1
