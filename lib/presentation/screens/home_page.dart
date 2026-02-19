@@ -7,18 +7,21 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: isDark ? colorScheme.surface : const Color(0xFFF5F7FA),
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
-        foregroundColor: Colors.black87,
-        title: const Text(
+        foregroundColor: isDark ? Colors.white : Colors.black87,
+        title: Text(
           "Password Manager",
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 24,
-          ),
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+                fontSize: 24,
+              ),
         ),
         actions: [
           IconButton(
@@ -37,20 +40,26 @@ class HomePage extends StatelessWidget {
       ),
       body: Column(
         children: [
-          // Security Status Card
+          // Security Status Card - Using theme colors
           Container(
             margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Colors.blue.shade700, Colors.purple.shade700],
+                colors: isDark
+                    ? [
+                        colorScheme.primary.withOpacity(0.8),
+                        colorScheme.secondary.withOpacity(0.8),
+                      ]
+                    : [Colors.blue.shade700, Colors.purple.shade700],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.blue.withOpacity(0.3),
+                  color: (isDark ? colorScheme.primary : Colors.blue)
+                      .withOpacity(0.3),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -59,24 +68,23 @@ class HomePage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Security Status',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                  ),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
                 ),
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'Your vault is secure',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: Colors.white,
+                            fontSize: 20,
+                          ),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -87,20 +95,23 @@ class HomePage extends StatelessWidget {
                         color: Colors.white.withOpacity(0.2),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
                           Icon(
                             Icons.shield,
                             color: Colors.white,
                             size: 16,
                           ),
-                          SizedBox(width: 4),
+                          const SizedBox(width: 4),
                           Text(
                             '92%',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
                           ),
                         ],
                       ),
@@ -145,17 +156,19 @@ class HomePage extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Recent Passwords',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontSize: 18,
+                      ),
                 ),
                 TextButton(
                   onPressed: () {
                     // View all
                   },
+                  style: TextButton.styleFrom(
+                    foregroundColor: colorScheme.primary,
+                  ),
                   child: const Text('View All'),
                 ),
               ],
@@ -181,9 +194,13 @@ class HomePage extends StatelessWidget {
                   onCopy: () {
                     // Copy username
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Username copied to clipboard'),
-                        duration: Duration(seconds: 1),
+                      SnackBar(
+                        content: Text(
+                          'Username copied to clipboard',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        duration: const Duration(seconds: 1),
+                        backgroundColor: colorScheme.primary,
                       ),
                     );
                   },
@@ -203,9 +220,13 @@ class HomePage extends StatelessWidget {
                   onCopy: () {
                     // Copy username
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Username copied to clipboard'),
-                        duration: Duration(seconds: 1),
+                      SnackBar(
+                        content: Text(
+                          'Username copied to clipboard',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        duration: const Duration(seconds: 1),
+                        backgroundColor: colorScheme.primary,
                       ),
                     );
                   },
@@ -225,9 +246,13 @@ class HomePage extends StatelessWidget {
                   onCopy: () {
                     // Copy username
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Username copied to clipboard'),
-                        duration: Duration(seconds: 1),
+                      SnackBar(
+                        content: Text(
+                          'Username copied to clipboard',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        duration: const Duration(seconds: 1),
+                        backgroundColor: colorScheme.primary,
                       ),
                     );
                   },
@@ -247,9 +272,13 @@ class HomePage extends StatelessWidget {
                   onCopy: () {
                     // Copy username
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Username copied to clipboard'),
-                        duration: Duration(seconds: 1),
+                      SnackBar(
+                        content: Text(
+                          'Username copied to clipboard',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        duration: const Duration(seconds: 1),
+                        backgroundColor: colorScheme.primary,
                       ),
                     );
                   },
@@ -269,9 +298,13 @@ class HomePage extends StatelessWidget {
                   onCopy: () {
                     // Copy username
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Username copied to clipboard'),
-                        duration: Duration(seconds: 1),
+                      SnackBar(
+                        content: Text(
+                          'Username copied to clipboard',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        duration: const Duration(seconds: 1),
+                        backgroundColor: colorScheme.primary,
                       ),
                     );
                   },
@@ -290,7 +323,8 @@ class HomePage extends StatelessWidget {
         },
         icon: const Icon(Icons.add),
         label: const Text('Add Password'),
-        backgroundColor: Colors.blue.shade700,
+        backgroundColor: colorScheme.primary,
+        foregroundColor: colorScheme.onPrimary,
       ),
     );
   }
@@ -315,18 +349,18 @@ class HomePage extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
             ),
             Text(
               label,
-              style: TextStyle(
-                color: Colors.white.withOpacity(0.7),
-                fontSize: 12,
-              ),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: 12,
+                  ),
             ),
           ],
         ),
