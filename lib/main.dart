@@ -7,7 +7,7 @@ import 'presentation/screens/login_page.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform, // Add this line
+    options: DefaultFirebaseOptions.currentPlatform,
   );
   runApp(const PasswordManagerApp());
 }
@@ -21,6 +21,8 @@ class PasswordManagerApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       home: const LoginPage(),
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
     );
   }
 }
