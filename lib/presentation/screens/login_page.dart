@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:passwordmanager/presentation/widgets/auth/style_text_field.dart';
@@ -80,10 +81,28 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     setState(() => _isLoading = true);
 
     try {
-      await _auth.signInWithEmailAndPassword(
+      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
+
+      final user = userCredential.user;
+
+      if (user != null) {
+        // Create user document if not exists
+        final userDoc =
+            FirebaseFirestore.instance.collection('users').doc(user.uid);
+
+        final docSnapshot = await userDoc.get();
+
+        if (!docSnapshot.exists) {
+          await userDoc.set({
+            'email': user.email,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
+        }
+      }
+
       if (mounted) {
         Navigator.pushReplacement(
           context,
