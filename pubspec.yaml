@@ -70,6 +70,10 @@ dev_dependencies:
 
   flutter_lints: ^5.0.0
 
+  # Launcher Icons
+  flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.1
+
   # Code Generation
   build_runner: ^2.4.13
   injectable_generator: ^2.6.2
@@ -84,3 +88,15 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  assets:
+    - assets/icons/password-manager.png
+
+flutter_native_splash:
+  color: "#6F1D1B"  
+  android: true
+  ios: true
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/password-manager.png"

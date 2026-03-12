@@ -89,12 +89,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       final user = userCredential.user;
 
       if (user != null) {
-        // Create user document if not exists
         final userDoc =
             FirebaseFirestore.instance.collection('users').doc(user.uid);
-
         final docSnapshot = await userDoc.get();
-
         if (!docSnapshot.exists) {
           await userDoc.set({
             'email': user.email,
@@ -185,10 +182,24 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       backgroundColor: t.background,
       body: Stack(
         children: [
+          // Background with orbit ring (no logo inside)
           AuthBackground(
             shieldRotate: _shieldRotate,
             isDark: isDark,
           ),
+
+          // Shield logo pinned at exactly the same position as the orbit ring:
+          // AuthBackground places the ring at top:80, size 150x150.
+          // Logo is 84x84, so offset = 80 + (150 - 84) / 2 = 80 + 33 = 113
+          Positioned(
+            top: 113,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: _buildShieldLogo(),
+            ),
+          ),
+
           SafeArea(
             child: Center(
               child: SingleChildScrollView(
@@ -201,8 +212,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                       key: _formKey,
                       child: Column(
                         children: [
-                          const SizedBox(height: 60),
-                          _buildHeader(),
+                          // Space to clear the orbit ring area (top:80 + height:150)
+                          const SizedBox(height: 250),
+                          _buildTitles(t),
                           const SizedBox(height: 40),
                           _buildEmailField(t),
                           const SizedBox(height: 14),
@@ -228,40 +240,42 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildShieldLogo() {
+    return Container(
+      width: 84,
+      height: 84,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1565C0), Color(0xFF6A1B9A)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1565C0).withOpacity(0.45),
+            blurRadius: 28,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: const Icon(
+        Icons.shield_rounded,
+        color: Colors.white,
+        size: 40,
+      ),
+    );
+  }
+
+  Widget _buildTitles(AppThemeExtension t) {
     return Column(
       children: [
-        Container(
-          width: 84,
-          height: 84,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF1565C0), Color(0xFF6A1B9A)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF1565C0).withOpacity(0.45),
-                blurRadius: 28,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
-          child: const Icon(
-            Icons.shield_rounded,
-            color: Colors.white,
-            size: 40,
-          ),
-        ),
-        const SizedBox(height: 24),
         Text(
           'Welcome Back',
           style: TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.w800,
-            color: context.appTheme.textPrimary,
+            color: t.textPrimary,
             letterSpacing: -0.6,
           ),
         ),
@@ -270,7 +284,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
           'Sign in to access your vault',
           style: TextStyle(
             fontSize: 14,
-            color: context.appTheme.textHint,
+            color: t.textHint,
             fontWeight: FontWeight.w400,
             letterSpacing: 0.1,
           ),
