@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:passwordmanager/data/model/auth_wrapper.dart';
 import 'package:passwordmanager/firebase_options.dart';
 import 'core/theme/app_theme.dart';
 import 'presentation/screens/login_page.dart';
@@ -20,7 +21,7 @@ class PasswordManagerApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      home: const LoginPage(),
+      home: const AuthWrapper(),
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
     );
