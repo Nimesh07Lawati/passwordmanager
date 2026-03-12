@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:local_auth/error_codes.dart' as auth_error;
+import 'package:app_settings/app_settings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../widgets/auth/auth_background.dart';
 
@@ -21,6 +22,7 @@ class _VaultPageState extends State<VaultPage> with TickerProviderStateMixin {
   bool _isAuthenticated = false;
   bool _isAuthenticating = false;
   bool _biometricAvailable = false;
+  bool _isEnrolled = true;
   String _searchQuery = '';
   final _searchController = TextEditingController();
 
@@ -99,13 +101,20 @@ class _VaultPageState extends State<VaultPage> with TickerProviderStateMixin {
 
   Future<void> _checkBiometricAvailability() async {
     try {
-      final canCheck = await _localAuth.canCheckBiometrics;
       final isDeviceSupported = await _localAuth.isDeviceSupported();
+      final canCheckBiometrics = await _localAuth.canCheckBiometrics;
+      final enrolledBiometrics = await _localAuth.getAvailableBiometrics();
+
       setState(() {
-        _biometricAvailable = canCheck || isDeviceSupported;
+        _biometricAvailable = isDeviceSupported;
+        // Device supports it but user has not enrolled any biometric or PIN
+        _isEnrolled = canCheckBiometrics && enrolledBiometrics.isNotEmpty;
       });
     } catch (_) {
-      setState(() => _biometricAvailable = false);
+      setState(() {
+        _biometricAvailable = false;
+        _isEnrolled = false;
+      });
     }
   }
 
@@ -133,18 +142,24 @@ class _VaultPageState extends State<VaultPage> with TickerProviderStateMixin {
         }
       }
     } on PlatformException catch (e) {
-      String message;
       if (e.code == auth_error.notEnrolled) {
-        message = 'No biometrics enrolled. Please set up in device settings.';
+        if (mounted) {
+          setState(() => _isEnrolled = false);
+          _showEnrollmentDialog();
+        }
       } else if (e.code == auth_error.notAvailable) {
-        message = 'Biometrics not available on this device.';
+        if (mounted)
+          _showSnackBar('Biometrics not available on this device.',
+              isError: true);
       } else if (e.code == auth_error.lockedOut ||
           e.code == auth_error.permanentlyLockedOut) {
-        message = 'Too many attempts. Please use your device PIN.';
+        if (mounted)
+          _showSnackBar('Too many attempts. Please use your device PIN.',
+              isError: true);
       } else {
-        message = 'Authentication failed: ${e.message}';
+        if (mounted)
+          _showSnackBar('Authentication failed: ${e.message}', isError: true);
       }
-      if (mounted) _showSnackBar(message, isError: true);
     } finally {
       if (mounted) setState(() => _isAuthenticating = false);
     }
@@ -153,6 +168,112 @@ class _VaultPageState extends State<VaultPage> with TickerProviderStateMixin {
   void _lockVault() {
     setState(() => _isAuthenticated = false);
     _entranceController.forward(from: 0);
+  }
+
+  void _showEnrollmentDialog() {
+    final t = context.appTheme;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: t.surfaceHigh,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF1565C0), Color(0xFF6A1B9A)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.fingerprint_rounded,
+                  color: Colors.white, size: 18),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Set Up Biometrics',
+                style: TextStyle(
+                  color: t.textPrimary,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'No biometrics or screen lock found on this device.',
+              style: TextStyle(
+                color: t.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'To protect your passwords, please set up fingerprint, face unlock, or a PIN in your device security settings.',
+              style: TextStyle(
+                color: t.textSecondary,
+                fontSize: 13,
+                height: 1.5,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Not Now',
+              style:
+                  TextStyle(color: t.textDisabled, fontWeight: FontWeight.w600),
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1565C0), Color(0xFF6A1B9A)],
+              ),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _openSecuritySettings();
+              },
+              child: const Text(
+                'Open Settings',
+                style:
+                    TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openSecuritySettings() async {
+    try {
+      await AppSettings.openAppSettings(type: AppSettingsType.security);
+    } catch (_) {
+      // Fallback: open general device settings if security settings unavailable
+      if (mounted) {
+        _showSnackBar(
+          'Please go to Settings → Security to set up biometrics',
+          isError: false,
+        );
+      }
+    }
   }
 
   void _showSnackBar(String message, {bool isError = false}) {
@@ -295,7 +416,9 @@ class _VaultPageState extends State<VaultPage> with TickerProviderStateMixin {
 
   Widget _buildUnlockButton(AppThemeExtension t) {
     return GestureDetector(
-      onTap: _isAuthenticating ? null : _authenticate,
+      onTap: _isAuthenticating
+          ? null
+          : (_isEnrolled ? _authenticate : _showEnrollmentDialog),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         width: double.infinity,
@@ -364,6 +487,20 @@ class _VaultPageState extends State<VaultPage> with TickerProviderStateMixin {
   }
 
   Widget _buildBiometricHint(AppThemeExtension t) {
+    if (!_isEnrolled) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.warning_amber_rounded,
+              size: 13, color: const Color(0xFFEF5350).withOpacity(0.8)),
+          const SizedBox(width: 6),
+          Text(
+            'You will be redirected to device settings',
+            style: TextStyle(fontSize: 12, color: t.textDisabled),
+          ),
+        ],
+      );
+    }
     if (!_biometricAvailable) return const SizedBox.shrink();
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
