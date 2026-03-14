@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:passwordmanager/data/model/auth_wrapper.dart';
 import 'package:passwordmanager/firebase_options.dart';
 import 'core/theme/app_theme.dart';
-import 'presentation/screens/login_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
