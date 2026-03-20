@@ -2,6 +2,11 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/services.dart';
+import 'package:local_auth/local_auth.dart';
+import 'package:local_auth/error_codes.dart' as auth_error;
+import 'package:app_settings/app_settings.dart';
+import 'package:passwordmanager/core/encryption_service.dart';
 import 'package:passwordmanager/presentation/widgets/auth/style_text_field.dart';
 import '../../../core/theme/app_theme.dart';
 import '../widgets/auth/gradient_button.dart';
@@ -17,54 +22,33 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
+  // ── Form ───────────────────────────────────────────────────────────────────
   final _formKey = GlobalKey<FormState>();
   final _siteController = TextEditingController();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  // ── State ──────────────────────────────────────────────────────────────────
   bool _isLoading = false;
   bool _isPasswordVisible = false;
 
+  // ── Biometrics ─────────────────────────────────────────────────────────────
+  final _localAuth = LocalAuthentication();
+
+  // ── Animations ─────────────────────────────────────────────────────────────
   late AnimationController _entranceController;
   late AnimationController _shieldController;
   late Animation<double> _fadeIn;
   late Animation<Offset> _slideUp;
   late Animation<double> _shieldRotate;
 
+  // ── Lifecycle ──────────────────────────────────────────────────────────────
+
   @override
   void initState() {
     super.initState();
     _initializeAnimations();
     _entranceController.forward();
-  }
-
-  void _initializeAnimations() {
-    _entranceController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    );
-
-    _shieldController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 4),
-    )..repeat();
-
-    _fadeIn = CurvedAnimation(
-      parent: _entranceController,
-      curve: const Interval(0.2, 1.0, curve: Curves.easeOut),
-    );
-
-    _slideUp = Tween<Offset>(
-      begin: const Offset(0, 0.25),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _entranceController,
-      curve: const Interval(0.1, 1.0, curve: Curves.easeOutCubic),
-    ));
-
-    _shieldRotate = Tween<double>(begin: 0, end: 2 * math.pi).animate(
-      CurvedAnimation(parent: _shieldController, curve: Curves.linear),
-    );
   }
 
   @override
@@ -77,6 +61,74 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  // ── Animations ─────────────────────────────────────────────────────────────
+
+  void _initializeAnimations() {
+    _entranceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+    _shieldController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    )..repeat();
+
+    _fadeIn = CurvedAnimation(
+      parent: _entranceController,
+      curve: const Interval(0.2, 1.0, curve: Curves.easeOut),
+    );
+    _slideUp = Tween<Offset>(
+      begin: const Offset(0, 0.25),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _entranceController,
+      curve: const Interval(0.1, 1.0, curve: Curves.easeOutCubic),
+    ));
+    _shieldRotate = Tween<double>(begin: 0, end: 2 * math.pi).animate(
+      CurvedAnimation(parent: _shieldController, curve: Curves.linear),
+    );
+  }
+
+  // ── Biometric gate ─────────────────────────────────────────────────────────
+
+  /// Returns true if the user passes biometric / device-PIN auth.
+  /// Shows enrollment dialog automatically if nothing is set up.
+  Future<bool> _authenticate() async {
+    try {
+      final isSupported = await _localAuth.isDeviceSupported();
+      if (!isSupported) {
+        _showSnackBar('Device does not support authentication', isError: true);
+        return false;
+      }
+
+      final canCheck = await _localAuth.canCheckBiometrics;
+      final enrolled = await _localAuth.getAvailableBiometrics();
+      if (!canCheck || enrolled.isEmpty) {
+        _showEnrollmentDialog();
+        return false;
+      }
+
+      return await _localAuth.authenticate(
+        localizedReason:
+            'Verify your identity to encrypt and save this password',
+        options: const AuthenticationOptions(
+          biometricOnly: false, // allow PIN fallback
+          stickyAuth: true,
+        ),
+      );
+    } on PlatformException catch (e) {
+      if (e.code == auth_error.notEnrolled) {
+        _showEnrollmentDialog();
+      } else if (e.code != auth_error.lockedOut &&
+          e.code != auth_error.permanentlyLockedOut) {
+        _showSnackBar('Authentication error: ${e.message}', isError: true);
+      }
+      return false;
+    }
+  }
+
+  // ── Save password ──────────────────────────────────────────────────────────
+
   Future<void> _savePassword() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -86,31 +138,216 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       return;
     }
 
+    // ── Step 1: biometric gate ─────────────────────────────────────────────
+    final authed = await _authenticate();
+    if (!authed) return;
+
     setState(() => _isLoading = true);
 
     try {
+      // ── Step 2: encrypt with device-bound AES key ──────────────────────
+      final encryptedPassword = await EncryptionService.encrypt(
+        _passwordController.text.trim(),
+      );
+
+      // ── Step 3: save to Firestore — plain password intentionally blank ─
       await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
           .collection('passwords')
           .add({
-        "siteName": _siteController.text.trim(),
-        "user_name": _usernameController.text.trim(),
-        "password": _passwordController.text.trim(),
-        "encrypted_password": "",
-        "createdAt": FieldValue.serverTimestamp(),
+        'siteName': _siteController.text.trim(),
+        'user_name': _usernameController.text.trim(),
+        'password': '', // never store plaintext
+        'encrypted_password': encryptedPassword,
+        'createdAt': FieldValue.serverTimestamp(),
       });
 
-      _showSnackBar('Password saved successfully');
+      _showSnackBar('Password encrypted and saved');
       _siteController.clear();
       _usernameController.clear();
       _passwordController.clear();
     } catch (e) {
-      _showSnackBar('Error: $e', isError: true);
+      _showSnackBar('Error saving password: $e', isError: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
+
+  // ── Auth / Logout ──────────────────────────────────────────────────────────
+
+  Future<void> _logout() async {
+    await FirebaseAuth.instance.signOut();
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginPage()),
+    );
+  }
+
+  void _navigateToVault() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const VaultPage()),
+    );
+  }
+
+  // ── Dialogs ────────────────────────────────────────────────────────────────
+
+  void _showEnrollmentDialog() {
+    if (!mounted) return;
+    final t = context.appTheme;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: t.surfaceHigh,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF1565C0), Color(0xFF6A1B9A)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.fingerprint_rounded,
+                  color: Colors.white, size: 18),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Set Up Biometrics',
+                style: TextStyle(
+                    color: t.textPrimary,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Biometric or screen lock is required to save passwords securely.',
+              style: TextStyle(
+                  color: t.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Please set up fingerprint, face unlock, or a PIN in your device security settings.',
+              style:
+                  TextStyle(color: t.textSecondary, fontSize: 13, height: 1.5),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Not Now',
+                style: TextStyle(
+                    color: t.textDisabled, fontWeight: FontWeight.w600)),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                  colors: [Color(0xFF1565C0), Color(0xFF6A1B9A)]),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: TextButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                try {
+                  await AppSettings.openAppSettings(
+                      type: AppSettingsType.security);
+                } catch (_) {
+                  _showSnackBar(
+                      'Go to Settings → Security to set up biometrics');
+                }
+              },
+              child: const Text('Open Settings',
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.w700)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLogoutDialog() {
+    final t = context.appTheme;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: t.surfaceHigh,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF1565C0), Color(0xFF6A1B9A)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.logout_rounded,
+                  color: Colors.white, size: 18),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Sign Out',
+              style: TextStyle(
+                  color: t.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to sign out of your vault?',
+          style: TextStyle(color: t.textSecondary, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Cancel',
+                style: TextStyle(
+                    color: t.textDisabled, fontWeight: FontWeight.w600)),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                  colors: [Color(0xFF1565C0), Color(0xFF6A1B9A)]),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _logout();
+              },
+              child: const Text('Sign Out',
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.w700)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Snackbar ───────────────────────────────────────────────────────────────
 
   void _showSnackBar(String message, {bool isError = false}) {
     if (!mounted) return;
@@ -138,96 +375,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Future<void> _logout() async {
-    await FirebaseAuth.instance.signOut();
-    if (!mounted) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const LoginPage()),
-    );
-  }
-
-  void _showLogoutDialog() {
-    final t = context.appTheme;
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: t.surfaceHigh,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF1565C0), Color(0xFF6A1B9A)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.logout_rounded,
-                  color: Colors.white, size: 18),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              'Sign Out',
-              style: TextStyle(
-                color: t.textPrimary,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          'Are you sure you want to sign out of your vault?',
-          style: TextStyle(color: t.textSecondary, fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancel',
-              style:
-                  TextStyle(color: t.textDisabled, fontWeight: FontWeight.w600),
-            ),
-          ),
-          Container(
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF1565C0), Color(0xFF6A1B9A)],
-              ),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _logout();
-              },
-              child: const Text(
-                'Sign Out',
-                style:
-                    TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // ── Helpers ────────────────────────────────────────────────────────────────
 
   String? _validateRequired(String? value, String field) {
     if (value == null || value.isEmpty) return 'Please enter $field';
     return null;
   }
 
-  void _navigateToVault() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const VaultPage()),
-    );
-  }
+  // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -262,6 +417,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               'Add New Password',
                               Icons.add_circle_outline_rounded,
                             ),
+                            const SizedBox(height: 6),
+                            _buildBiometricHint(t),
                             const SizedBox(height: 14),
                             _buildAddPasswordCard(t),
                             const SizedBox(height: 40),
@@ -278,8 +435,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       ),
     );
   }
-
-  // ── App Bar ───────────────────────────────────────────────────────────────
 
   Widget _buildAppBar(AppThemeExtension t, User? user) {
     return Padding(
@@ -325,10 +480,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   Text(
                     user!.email!,
                     style: TextStyle(
-                      fontSize: 11,
-                      color: t.textHint,
-                      fontWeight: FontWeight.w400,
-                    ),
+                        fontSize: 11,
+                        color: t.textHint,
+                        fontWeight: FontWeight.w400),
                     overflow: TextOverflow.ellipsis,
                   ),
               ],
@@ -350,8 +504,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       ),
     );
   }
-
-  // ── Vault Banner ──────────────────────────────────────────────────────────
 
   Widget _buildVaultBanner(AppThemeExtension t, User? user) {
     return GestureDetector(
@@ -383,11 +535,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 color: Colors.white.withOpacity(0.15),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.lock_rounded,
-                color: Colors.white,
-                size: 26,
-              ),
+              child:
+                  const Icon(Icons.lock_rounded, color: Colors.white, size: 26),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -423,10 +572,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   Text(
                     'Open',
                     style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -464,8 +612,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  // ── Section Header ────────────────────────────────────────────────────────
-
   Widget _buildSectionHeader(AppThemeExtension t, String title, IconData icon) {
     return Row(
       children: [
@@ -474,17 +620,28 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         Text(
           title,
           style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
-            color: t.textPrimary,
-            letterSpacing: -0.2,
-          ),
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: t.textPrimary,
+              letterSpacing: -0.2),
         ),
       ],
     );
   }
 
-  // ── Add Password Card ─────────────────────────────────────────────────────
+  Widget _buildBiometricHint(AppThemeExtension t) {
+    return Row(
+      children: [
+        Icon(Icons.fingerprint_rounded, size: 13, color: t.textHint),
+        const SizedBox(width: 6),
+        Text(
+          'Biometric verification required to save',
+          style: TextStyle(
+              fontSize: 12, color: t.textHint, fontWeight: FontWeight.w400),
+        ),
+      ],
+    );
+  }
 
   Widget _buildAddPasswordCard(AppThemeExtension t) {
     return Container(
@@ -545,7 +702,23 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             GradientButton(
               onTap: _isLoading ? null : _savePassword,
               isLoading: _isLoading,
-              label: 'Save Password',
+              label: 'Save Password Securely',
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.lock_rounded,
+                    size: 11, color: const Color(0xFF1565C0).withOpacity(0.6)),
+                const SizedBox(width: 5),
+                Text(
+                  'AES-256 encrypted · biometric protected',
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: const Color(0xFF1565C0).withOpacity(0.6),
+                      fontWeight: FontWeight.w400),
+                ),
+              ],
             ),
           ],
         ),
