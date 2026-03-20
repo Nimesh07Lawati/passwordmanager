@@ -12,6 +12,8 @@ class PasswordTile extends StatelessWidget {
     required this.uid,
     required this.onDelete,
     required this.onCopyToClipboard,
+    Future<void> Function()? onRevealPassword,
+    required bool isDecrypting,
   });
 
   final String siteName;
