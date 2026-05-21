@@ -7,12 +7,12 @@ class OrbitPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFF1565C0).withOpacity(0.12)
+      ..color = const Color(0xFF1565C0).withValues(alpha: 0.12)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
 
     final dotPaint = Paint()
-      ..color = const Color(0xFF1565C0).withOpacity(0.35)
+      ..color = const Color(0xFF1565C0).withValues(alpha: 0.35)
       ..style = PaintingStyle.fill;
 
     final center = Offset(size.width / 2, size.height / 2);

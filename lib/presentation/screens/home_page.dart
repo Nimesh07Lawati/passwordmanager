@@ -319,7 +319,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF1565C0).withOpacity(0.35),
+                  color: const Color(0xFF1565C0).withValues(alpha: 0.35),
                   blurRadius: 16,
                   offset: const Offset(0, 6),
                 ),
@@ -387,7 +387,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           borderRadius: BorderRadius.circular(22),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF1565C0).withOpacity(0.38),
+              color: const Color(0xFF1565C0).withValues(alpha: 0.38),
               blurRadius: 24,
               offset: const Offset(0, 10),
             ),
@@ -399,7 +399,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
+                color: Colors.white.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
               ),
               child:
@@ -428,7 +428,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.18),
+                color: Colors.white.withValues(alpha: 0.18),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -519,7 +519,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         border: Border.all(color: t.borderColor, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 20,
             offset: const Offset(0, 6),
           ),
@@ -576,13 +576,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.lock_rounded,
-                    size: 11, color: const Color(0xFF1565C0).withOpacity(0.6)),
+                    size: 11,
+                    color: const Color(0xFF1565C0).withValues(alpha: 0.6)),
                 const SizedBox(width: 5),
                 Text(
                   'AES-256 encrypted · biometric protected',
                   style: TextStyle(
                       fontSize: 11,
-                      color: const Color(0xFF1565C0).withOpacity(0.6),
+                      color: const Color(0xFF1565C0).withValues(alpha: 0.6),
                       fontWeight: FontWeight.w400),
                 ),
               ],

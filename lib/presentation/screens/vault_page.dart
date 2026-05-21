@@ -1,8 +1,5 @@
-import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:passwordmanager/core/extension/import_extensios.dart';
 import 'package:local_auth/error_codes.dart' as auth_error;
 import 'package:passwordmanager/core/services/encryption_service.dart';
 import 'package:passwordmanager/presentation/screens/controllers/vault_controller.dart';
@@ -11,7 +8,6 @@ import 'package:passwordmanager/presentation/widgets/vault_widgets/vault_app_bar
 import 'package:passwordmanager/presentation/widgets/vault_widgets/vault_empty_states.dart';
 import 'package:passwordmanager/presentation/widgets/vault_widgets/vault_lock_screen.dart';
 import 'package:passwordmanager/presentation/widgets/vault_widgets/vault_search_bar.dart';
-import '../../../core/theme/app_theme.dart';
 import '../widgets/auth/auth_background.dart';
 
 class VaultPage extends StatefulWidget {
@@ -183,7 +179,7 @@ class _VaultPageState extends State<VaultPage> with TickerProviderStateMixin {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFFEF5350).withOpacity(0.1),
+                color: const Color(0xFFEF5350).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(Icons.delete_outline_rounded,
@@ -222,7 +218,7 @@ class _VaultPageState extends State<VaultPage> with TickerProviderStateMixin {
             const SizedBox(height: 10),
             Text('This action cannot be undone.',
                 style: TextStyle(
-                    color: const Color(0xFFEF5350).withOpacity(0.8),
+                    color: const Color(0xFFEF5350).withValues(alpha: 0.8),
                     fontSize: 12,
                     fontWeight: FontWeight.w500)),
           ],
@@ -387,10 +383,10 @@ class _VaultPageState extends State<VaultPage> with TickerProviderStateMixin {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFF1565C0).withOpacity(0.08),
+                color: const Color(0xFF1565C0).withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(8),
-                border:
-                    Border.all(color: const Color(0xFF1565C0).withOpacity(0.2)),
+                border: Border.all(
+                    color: const Color(0xFF1565C0).withValues(alpha: 0.2)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
