@@ -1,11 +1,10 @@
-import 'dart:math' as math;
+import 'package:passwordmanager/core/extension/import_extensios.dart';
 import 'package:passwordmanager/presentation/screens/controllers/login_controller.dart';
-import 'package:passwordmanager/presentation/widgets/auth/style_text_field.dart';
+import 'package:passwordmanager/presentation/widgets/auth/app_input_field.dart';
 import '../widgets/auth/gradient_button.dart';
 import '../widgets/auth/auth_background.dart';
 import 'sign_up_page.dart';
 import 'home_page.dart';
-import 'package:passwordmanager/core/extension/import_extensios.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -28,17 +27,22 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
   void _onControllerUpdate() {
     final event = _controller.lastEvent;
+
     if (event != null) {
       if (event.event == LoginEvent.loginSuccess) {
         _controller.consumeEvent();
+
         if (mounted) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const HomePage()),
+            MaterialPageRoute(
+              builder: (_) => const HomePage(),
+            ),
           );
         }
       } else if (event.event == LoginEvent.loginError) {
         _controller.consumeEvent();
+
         if (mounted && event.errorMessage != null) {
           _showErrorSnackBar(event.errorMessage!);
         }
@@ -51,13 +55,18 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       SnackBar(
         content: Row(
           children: [
-            const Icon(Icons.error_outline_rounded,
-                color: Colors.white, size: 18),
+            const Icon(
+              Icons.error_outline_rounded,
+              color: Colors.white,
+              size: 18,
+            ),
             const SizedBox(width: 10),
-            Expanded(child: Text(message)),
+            Expanded(
+              child: Text(message),
+            ),
           ],
         ),
-        backgroundColor: const Color(0xFFEF5350),
+        backgroundColor: Colors.red.shade400,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -77,7 +86,9 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   void _navigateToSignUp() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const SignUpPage()),
+      MaterialPageRoute(
+        builder: (_) => const SignUpPage(),
+      ),
     );
   }
 
@@ -93,13 +104,13 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         builder: (context, child) {
           return Stack(
             children: [
-              // Background with orbit ring
+              // Background
               AuthBackground(
                 shieldRotate: _controller.shieldRotate,
                 isDark: isDark,
               ),
 
-              // Shield logo pinned at exactly the same position as the orbit ring
+              // Shield Logo
               Positioned(
                 top: 113,
                 left: 0,
@@ -156,14 +167,17 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       height: 84,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF1565C0), Color(0xFF6A1B9A)],
+          colors: [
+            AppColors.primary,
+            AppColors.secondary,
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1565C0).withOpacity(0.45),
+            color: AppColors.primary.withOpacity(0.45),
             blurRadius: 28,
             offset: const Offset(0, 10),
           ),
@@ -204,7 +218,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Widget _buildEmailField(AppThemeExtension t) {
-    return StyledTextField(
+    return AppInputField(
       controller: _controller.emailController,
       label: 'Email address',
       prefixIcon: Icons.alternate_email_rounded,
@@ -215,7 +229,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   }
 
   Widget _buildPasswordField(AppThemeExtension t) {
-    return StyledTextField(
+    return AppInputField(
       controller: _controller.passwordController,
       label: 'Master password',
       prefixIcon: Icons.lock_outline_rounded,
@@ -241,13 +255,16 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
       child: TextButton(
         onPressed: () {},
         style: TextButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          padding: const EdgeInsets.symmetric(
+            vertical: 8,
+            horizontal: 4,
+          ),
         ),
         child: const Text(
           'Forgot password?',
           style: TextStyle(
             fontSize: 12,
-            color: Color(0xFF1565C0),
+            color: AppColors.primary,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -266,7 +283,12 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   Widget _buildDivider(AppThemeExtension t) {
     return Row(
       children: [
-        Expanded(child: Divider(color: t.borderColor, thickness: 1)),
+        Expanded(
+          child: Divider(
+            color: t.borderColor,
+            thickness: 1,
+          ),
+        ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 14),
           child: Text(
@@ -278,7 +300,12 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
             ),
           ),
         ),
-        Expanded(child: Divider(color: t.borderColor, thickness: 1)),
+        Expanded(
+          child: Divider(
+            color: t.borderColor,
+            thickness: 1,
+          ),
+        ),
       ],
     );
   }
@@ -298,7 +325,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
             TextSpan(
               text: 'Create one',
               style: TextStyle(
-                color: Color(0xFF1565C0),
+                color: AppColors.primary,
                 fontWeight: FontWeight.w700,
               ),
             ),

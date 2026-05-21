@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:passwordmanager/presentation/screens/controllers/sign_up_page_controller.dart';
-import 'package:passwordmanager/presentation/widgets/auth/style_text_field.dart';
+import 'package:passwordmanager/presentation/widgets/auth/app_input_field.dart';
 import '../../../core/theme/app_theme.dart';
 import '../widgets/auth/gradient_button.dart';
 import '../widgets/auth/auth_background.dart';
@@ -190,7 +190,7 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
   }
 
   Widget _buildEmailField(AppThemeExtension t) {
-    return StyledTextField(
+    return AppInputField(
       controller: _controller.emailController,
       label: 'Email address',
       prefixIcon: Icons.alternate_email_rounded,
@@ -201,7 +201,7 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
   }
 
   Widget _buildPasswordField(AppThemeExtension t) {
-    return StyledTextField(
+    return AppInputField(
       controller: _controller.passwordController,
       label: 'Master password',
       prefixIcon: Icons.lock_outline_rounded,
@@ -222,7 +222,7 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
   }
 
   Widget _buildConfirmPasswordField(AppThemeExtension t) {
-    return StyledTextField(
+    return AppInputField(
       controller: _controller.confirmPasswordController,
       label: 'Confirm password',
       prefixIcon: Icons.lock_outline_rounded,

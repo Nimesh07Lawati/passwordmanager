@@ -1,7 +1,7 @@
 import 'package:passwordmanager/presentation/screens/controllers/home_controller.dart';
 import 'package:passwordmanager/presentation/widgets/auth/auth_background.dart';
 import 'package:passwordmanager/presentation/widgets/auth/gradient_button.dart';
-import 'package:passwordmanager/presentation/widgets/auth/style_text_field.dart';
+import 'package:passwordmanager/presentation/widgets/auth/app_input_field.dart';
 import 'login_page.dart';
 import 'vault_page.dart';
 import 'package:passwordmanager/core/extension/import_extensios.dart';
@@ -529,7 +529,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         key: _controller.formKey,
         child: Column(
           children: [
-            StyledTextField(
+            AppInputField(
               controller: _controller.siteController,
               label: 'Site name',
               prefixIcon: Icons.language_rounded,
@@ -537,7 +537,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               validator: (v) => _controller.validateRequired(v, 'site name'),
             ),
             const SizedBox(height: 14),
-            StyledTextField(
+            AppInputField(
               controller: _controller.usernameController,
               label: 'Username / Email',
               prefixIcon: Icons.alternate_email_rounded,
@@ -547,7 +547,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   _controller.validateRequired(v, 'username or email'),
             ),
             const SizedBox(height: 14),
-            StyledTextField(
+            AppInputField(
               controller: _controller.passwordController,
               label: 'Password',
               prefixIcon: Icons.lock_outline_rounded,
