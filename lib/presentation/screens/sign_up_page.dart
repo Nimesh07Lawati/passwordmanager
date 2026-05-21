@@ -1,7 +1,6 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:passwordmanager/presentation/widgets/auth/style_text_field.dart';
+import 'package:passwordmanager/presentation/screens/controllers/sign_up_page_controller.dart';
+import 'package:passwordmanager/presentation/widgets/auth/app_input_field.dart';
 import '../../../core/theme/app_theme.dart';
 import '../widgets/auth/gradient_button.dart';
 import '../widgets/auth/auth_background.dart';
@@ -16,153 +15,67 @@ class SignUpPage extends StatefulWidget {
 }
 
 class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
-  final _auth = FirebaseAuth.instance;
-
-  bool _isLoading = false;
-  bool _isPasswordVisible = false;
-  bool _isConfirmPasswordVisible = false;
-
-  late AnimationController _entranceController;
-  late AnimationController _shieldController;
-  late Animation<double> _fadeIn;
-  late Animation<Offset> _slideUp;
-  late Animation<double> _shieldRotate;
+  late SignUpController _controller;
 
   @override
   void initState() {
     super.initState();
-    _initializeAnimations();
-    _entranceController.forward();
+    _controller = SignUpController(vsync: this);
+
+    // Listen for sign up events
+    _controller.addListener(_onControllerUpdate);
   }
 
-  void _initializeAnimations() {
-    _entranceController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    );
+  void _onControllerUpdate() {
+    final event = _controller.lastEvent;
+    if (event != null) {
+      if (event.event == SignUpEvent.signUpSuccess) {
+        _controller.consumeEvent();
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const HomePage()),
+          );
+        }
+      } else if (event.event == SignUpEvent.signUpError) {
+        _controller.consumeEvent();
+        if (mounted && event.errorMessage != null) {
+          _showErrorSnackBar(event.errorMessage!);
+        }
+      }
+    }
+  }
 
-    _shieldController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 4),
-    )..repeat();
-
-    _fadeIn = CurvedAnimation(
-      parent: _entranceController,
-      curve: const Interval(0.2, 1.0, curve: Curves.easeOut),
-    );
-
-    _slideUp = Tween<Offset>(
-      begin: const Offset(0, 0.25),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _entranceController,
-      curve: const Interval(0.1, 1.0, curve: Curves.easeOutCubic),
-    ));
-
-    _shieldRotate = Tween<double>(begin: 0, end: 2 * math.pi).animate(
-      CurvedAnimation(parent: _shieldController, curve: Curves.linear),
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline_rounded,
+                color: Colors.white, size: 18),
+            const SizedBox(width: 10),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: const Color(0xFFEF5350),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        duration: const Duration(seconds: 4),
+      ),
     );
   }
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
-    _entranceController.dispose();
-    _shieldController.dispose();
+    _controller.removeListener(_onControllerUpdate);
+    _controller.dispose();
     super.dispose();
-  }
-
-  Future<void> _signUp() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      await _auth.createUserWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
-
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomePage()),
-        );
-      }
-    } on FirebaseAuthException catch (e) {
-      _handleAuthError(e);
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  void _handleAuthError(FirebaseAuthException e) {
-    String message = 'An error occurred';
-
-    switch (e.code) {
-      case 'email-already-in-use':
-        message = 'This email is already registered';
-        break;
-      case 'weak-password':
-        message = 'Password is too weak';
-        break;
-      case 'invalid-email':
-        message = 'Invalid email address';
-        break;
-      default:
-        message = 'Error: ${e.code}';
-    }
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.error_outline_rounded,
-                  color: Colors.white, size: 18),
-              const SizedBox(width: 10),
-              Expanded(child: Text(message)),
-            ],
-          ),
-          backgroundColor: const Color(0xFFEF5350),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          duration: const Duration(seconds: 4),
-        ),
-      );
-    }
   }
 
   void _navigateToLogin() {
     Navigator.pop(context);
-  }
-
-  String? _validateEmail(String? value) {
-    if (value == null || value.isEmpty) return 'Please enter your email';
-    if (!value.contains('@')) return 'Please enter a valid email';
-    return null;
-  }
-
-  String? _validatePassword(String? value) {
-    if (value == null || value.isEmpty) return 'Please enter your password';
-    if (value.length < 6) return 'Password must be at least 6 characters';
-    return null;
-  }
-
-  String? _validateConfirmPassword(String? value) {
-    if (value == null || value.isEmpty) return 'Please confirm your password';
-    if (value != _passwordController.text) return 'Passwords do not match';
-    return null;
   }
 
   @override
@@ -172,50 +85,55 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
 
     return Scaffold(
       backgroundColor: t.background,
-      body: Stack(
-        children: [
-          AuthBackground(
-            shieldRotate: _shieldRotate,
-            isDark: isDark,
-          ),
-          SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 28),
-                child: FadeTransition(
-                  opacity: _fadeIn,
-                  child: SlideTransition(
-                    position: _slideUp,
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 60),
-                          _buildHeader(t),
-                          const SizedBox(height: 40),
-                          _buildEmailField(t),
-                          const SizedBox(height: 14),
-                          _buildPasswordField(t),
-                          const SizedBox(height: 14),
-                          _buildConfirmPasswordField(t),
-                          const SizedBox(height: 10),
-                          PasswordInfoRow(theme: t),
-                          const SizedBox(height: 20),
-                          _buildSignUpButton(),
-                          const SizedBox(height: 28),
-                          _buildDivider(t),
-                          const SizedBox(height: 24),
-                          _buildLoginLink(),
-                          const SizedBox(height: 40),
-                        ],
+      body: ListenableBuilder(
+        listenable: _controller,
+        builder: (context, child) {
+          return Stack(
+            children: [
+              AuthBackground(
+                shieldRotate: _controller.shieldRotate,
+                isDark: isDark,
+              ),
+              SafeArea(
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 28),
+                    child: FadeTransition(
+                      opacity: _controller.fadeIn,
+                      child: SlideTransition(
+                        position: _controller.slideUp,
+                        child: Form(
+                          key: _controller.formKey,
+                          child: Column(
+                            children: [
+                              const SizedBox(height: 60),
+                              _buildHeader(t),
+                              const SizedBox(height: 40),
+                              _buildEmailField(t),
+                              const SizedBox(height: 14),
+                              _buildPasswordField(t),
+                              const SizedBox(height: 14),
+                              _buildConfirmPasswordField(t),
+                              const SizedBox(height: 10),
+                              PasswordInfoRow(theme: t),
+                              const SizedBox(height: 20),
+                              _buildSignUpButton(),
+                              const SizedBox(height: 28),
+                              _buildDivider(t),
+                              const SizedBox(height: 24),
+                              _buildLoginLink(),
+                              const SizedBox(height: 40),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }
@@ -235,7 +153,7 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF1565C0).withOpacity(0.45),
+                color: const Color(0xFF1565C0).withValues(alpha: 0.45),
                 blurRadius: 28,
                 offset: const Offset(0, 10),
               ),
@@ -272,64 +190,62 @@ class _SignUpPageState extends State<SignUpPage> with TickerProviderStateMixin {
   }
 
   Widget _buildEmailField(AppThemeExtension t) {
-    return StyledTextField(
-      controller: _emailController,
+    return AppInputField(
+      controller: _controller.emailController,
       label: 'Email address',
       prefixIcon: Icons.alternate_email_rounded,
       keyboardType: TextInputType.emailAddress,
       theme: t,
-      validator: _validateEmail,
+      validator: _controller.validateEmail,
     );
   }
 
   Widget _buildPasswordField(AppThemeExtension t) {
-    return StyledTextField(
-      controller: _passwordController,
+    return AppInputField(
+      controller: _controller.passwordController,
       label: 'Master password',
       prefixIcon: Icons.lock_outline_rounded,
-      obscureText: !_isPasswordVisible,
+      obscureText: !_controller.isPasswordVisible,
       theme: t,
       suffixIcon: GestureDetector(
-        onTap: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+        onTap: _controller.togglePasswordVisibility,
         child: Icon(
-          _isPasswordVisible
+          _controller.isPasswordVisible
               ? Icons.visibility_rounded
               : Icons.visibility_off_rounded,
           color: t.textHint,
           size: 20,
         ),
       ),
-      validator: _validatePassword,
+      validator: _controller.validatePassword,
     );
   }
 
   Widget _buildConfirmPasswordField(AppThemeExtension t) {
-    return StyledTextField(
-      controller: _confirmPasswordController,
+    return AppInputField(
+      controller: _controller.confirmPasswordController,
       label: 'Confirm password',
       prefixIcon: Icons.lock_outline_rounded,
-      obscureText: !_isConfirmPasswordVisible,
+      obscureText: !_controller.isConfirmPasswordVisible,
       theme: t,
       suffixIcon: GestureDetector(
-        onTap: () => setState(
-          () => _isConfirmPasswordVisible = !_isConfirmPasswordVisible,
-        ),
+        onTap: _controller.toggleConfirmPasswordVisibility,
         child: Icon(
-          _isConfirmPasswordVisible
+          _controller.isConfirmPasswordVisible
               ? Icons.visibility_rounded
               : Icons.visibility_off_rounded,
           color: t.textHint,
           size: 20,
         ),
       ),
-      validator: _validateConfirmPassword,
+      validator: _controller.validateConfirmPassword,
     );
   }
 
   Widget _buildSignUpButton() {
     return GradientButton(
-      onTap: _isLoading ? null : _signUp,
-      isLoading: _isLoading,
+      onTap: _controller.isLoading ? null : _controller.signUp,
+      isLoading: _controller.isLoading,
       label: 'Create Account',
     );
   }

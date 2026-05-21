@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 
-class StyledTextField extends StatelessWidget {
+class AppInputField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
   final IconData prefixIcon;
@@ -11,7 +11,7 @@ class StyledTextField extends StatelessWidget {
   final String? Function(String?)? validator;
   final AppThemeExtension theme;
 
-  const StyledTextField({
+  const AppInputField({
     super.key,
     required this.controller,
     required this.label,
