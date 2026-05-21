@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:local_auth/error_codes.dart' as auth_error;
-import 'package:passwordmanager/core/encryption_service.dart';
+import 'package:passwordmanager/core/services/encryption_service.dart';
 import 'package:passwordmanager/presentation/screens/controllers/vault_controller.dart';
 import 'package:passwordmanager/presentation/widgets/vault_widgets/password_title_card.dart';
 import 'package:passwordmanager/presentation/widgets/vault_widgets/vault_app_bar.dart';

@@ -1,13 +1,11 @@
 import 'dart:math' as math;
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:passwordmanager/presentation/screens/controllers/login_controller.dart';
 import 'package:passwordmanager/presentation/widgets/auth/style_text_field.dart';
-import '../../../core/theme/app_theme.dart';
 import '../widgets/auth/gradient_button.dart';
 import '../widgets/auth/auth_background.dart';
 import 'sign_up_page.dart';
 import 'home_page.dart';
+import 'package:passwordmanager/core/extension/import_extensios.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -17,141 +15,63 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _auth = FirebaseAuth.instance;
-
-  bool _isLoading = false;
-  bool _isPasswordVisible = false;
-
-  late AnimationController _entranceController;
-  late AnimationController _shieldController;
-  late Animation<double> _fadeIn;
-  late Animation<Offset> _slideUp;
-  late Animation<double> _shieldRotate;
+  late LoginController _controller;
 
   @override
   void initState() {
     super.initState();
-    _initializeAnimations();
-    _entranceController.forward();
+    _controller = LoginController(vsync: this);
+
+    // Listen for login success
+    _controller.addListener(_onControllerUpdate);
   }
 
-  void _initializeAnimations() {
-    _entranceController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    );
+  void _onControllerUpdate() {
+    final event = _controller.lastEvent;
+    if (event != null) {
+      if (event.event == LoginEvent.loginSuccess) {
+        _controller.consumeEvent();
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const HomePage()),
+          );
+        }
+      } else if (event.event == LoginEvent.loginError) {
+        _controller.consumeEvent();
+        if (mounted && event.errorMessage != null) {
+          _showErrorSnackBar(event.errorMessage!);
+        }
+      }
+    }
+  }
 
-    _shieldController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 4),
-    )..repeat();
-
-    _fadeIn = CurvedAnimation(
-      parent: _entranceController,
-      curve: const Interval(0.2, 1.0, curve: Curves.easeOut),
-    );
-
-    _slideUp = Tween<Offset>(
-      begin: const Offset(0, 0.25),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _entranceController,
-      curve: const Interval(0.1, 1.0, curve: Curves.easeOutCubic),
-    ));
-
-    _shieldRotate = Tween<double>(begin: 0, end: 2 * math.pi).animate(
-      CurvedAnimation(parent: _shieldController, curve: Curves.linear),
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline_rounded,
+                color: Colors.white, size: 18),
+            const SizedBox(width: 10),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: const Color(0xFFEF5350),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        duration: const Duration(seconds: 4),
+      ),
     );
   }
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    _entranceController.dispose();
-    _shieldController.dispose();
+    _controller.removeListener(_onControllerUpdate);
+    _controller.dispose();
     super.dispose();
-  }
-
-  Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
-
-    try {
-      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      );
-
-      final user = userCredential.user;
-
-      if (user != null) {
-        final userDoc =
-            FirebaseFirestore.instance.collection('users').doc(user.uid);
-        final docSnapshot = await userDoc.get();
-        if (!docSnapshot.exists) {
-          await userDoc.set({
-            'email': user.email,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-        }
-      }
-
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const HomePage()),
-        );
-      }
-    } on FirebaseAuthException catch (e) {
-      _handleAuthError(e);
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  void _handleAuthError(FirebaseAuthException e) {
-    String message = 'An error occurred';
-    switch (e.code) {
-      case 'user-not-found':
-        message = 'No user found with this email.';
-        break;
-      case 'wrong-password':
-        message = 'Wrong password. Please try again.';
-        break;
-      case 'invalid-email':
-        message = 'Invalid email address format.';
-        break;
-      case 'invalid-credential':
-        message = 'Invalid credentials. Check your email and password.';
-        break;
-      default:
-        message = 'Error: ${e.code}';
-    }
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.error_outline_rounded,
-                  color: Colors.white, size: 18),
-              const SizedBox(width: 10),
-              Expanded(child: Text(message)),
-            ],
-          ),
-          backgroundColor: const Color(0xFFEF5350),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          duration: const Duration(seconds: 4),
-        ),
-      );
-    }
   }
 
   void _navigateToSignUp() {
@@ -161,18 +81,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     );
   }
 
-  String? _validateEmail(String? value) {
-    if (value == null || value.isEmpty) return 'Please enter your email';
-    if (!value.contains('@')) return 'Please enter a valid email';
-    return null;
-  }
-
-  String? _validatePassword(String? value) {
-    if (value == null || value.isEmpty) return 'Please enter your password';
-    if (value.length < 6) return 'Password must be at least 6 characters';
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
     final t = context.appTheme;
@@ -180,62 +88,64 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
     return Scaffold(
       backgroundColor: t.background,
-      body: Stack(
-        children: [
-          // Background with orbit ring (no logo inside)
-          AuthBackground(
-            shieldRotate: _shieldRotate,
-            isDark: isDark,
-          ),
+      body: ListenableBuilder(
+        listenable: _controller,
+        builder: (context, child) {
+          return Stack(
+            children: [
+              // Background with orbit ring
+              AuthBackground(
+                shieldRotate: _controller.shieldRotate,
+                isDark: isDark,
+              ),
 
-          // Shield logo pinned at exactly the same position as the orbit ring:
-          // AuthBackground places the ring at top:80, size 150x150.
-          // Logo is 84x84, so offset = 80 + (150 - 84) / 2 = 80 + 33 = 113
-          Positioned(
-            top: 113,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: _buildShieldLogo(),
-            ),
-          ),
+              // Shield logo pinned at exactly the same position as the orbit ring
+              Positioned(
+                top: 113,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: _buildShieldLogo(),
+                ),
+              ),
 
-          SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 28),
-                child: FadeTransition(
-                  opacity: _fadeIn,
-                  child: SlideTransition(
-                    position: _slideUp,
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        children: [
-                          // Space to clear the orbit ring area (top:80 + height:150)
-                          const SizedBox(height: 250),
-                          _buildTitles(t),
-                          const SizedBox(height: 40),
-                          _buildEmailField(t),
-                          const SizedBox(height: 14),
-                          _buildPasswordField(t),
-                          _buildForgotPassword(),
-                          const SizedBox(height: 10),
-                          _buildLoginButton(),
-                          const SizedBox(height: 28),
-                          _buildDivider(t),
-                          const SizedBox(height: 24),
-                          _buildSignUpLink(),
-                          const SizedBox(height: 40),
-                        ],
+              SafeArea(
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 28),
+                    child: FadeTransition(
+                      opacity: _controller.fadeIn,
+                      child: SlideTransition(
+                        position: _controller.slideUp,
+                        child: Form(
+                          key: _controller.formKey,
+                          child: Column(
+                            children: [
+                              const SizedBox(height: 250),
+                              _buildTitles(t),
+                              const SizedBox(height: 40),
+                              _buildEmailField(t),
+                              const SizedBox(height: 14),
+                              _buildPasswordField(t),
+                              _buildForgotPassword(),
+                              const SizedBox(height: 10),
+                              _buildLoginButton(),
+                              const SizedBox(height: 28),
+                              _buildDivider(t),
+                              const SizedBox(height: 24),
+                              _buildSignUpLink(),
+                              const SizedBox(height: 40),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
-        ],
+            ],
+          );
+        },
       ),
     );
   }
@@ -295,33 +205,33 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
   Widget _buildEmailField(AppThemeExtension t) {
     return StyledTextField(
-      controller: _emailController,
+      controller: _controller.emailController,
       label: 'Email address',
       prefixIcon: Icons.alternate_email_rounded,
       keyboardType: TextInputType.emailAddress,
       theme: t,
-      validator: _validateEmail,
+      validator: _controller.validateEmail,
     );
   }
 
   Widget _buildPasswordField(AppThemeExtension t) {
     return StyledTextField(
-      controller: _passwordController,
+      controller: _controller.passwordController,
       label: 'Master password',
       prefixIcon: Icons.lock_outline_rounded,
-      obscureText: !_isPasswordVisible,
+      obscureText: !_controller.isPasswordVisible,
       theme: t,
       suffixIcon: GestureDetector(
-        onTap: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+        onTap: _controller.togglePasswordVisibility,
         child: Icon(
-          _isPasswordVisible
+          _controller.isPasswordVisible
               ? Icons.visibility_rounded
               : Icons.visibility_off_rounded,
           color: t.textHint,
           size: 20,
         ),
       ),
-      validator: _validatePassword,
+      validator: _controller.validatePassword,
     );
   }
 
@@ -347,8 +257,8 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
 
   Widget _buildLoginButton() {
     return GradientButton(
-      onTap: _isLoading ? null : _login,
-      isLoading: _isLoading,
+      onTap: _controller.isLoading ? null : _controller.login,
+      isLoading: _controller.isLoading,
       label: 'Sign In',
     );
   }

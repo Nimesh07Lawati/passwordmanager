@@ -1,18 +1,10 @@
-import 'dart:math' as math;
-import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/services.dart';
-import 'package:local_auth/local_auth.dart';
-import 'package:local_auth/error_codes.dart' as auth_error;
-import 'package:app_settings/app_settings.dart';
-import 'package:passwordmanager/core/encryption_service.dart';
+import 'package:passwordmanager/presentation/screens/controllers/home_controller.dart';
+import 'package:passwordmanager/presentation/widgets/auth/auth_background.dart';
+import 'package:passwordmanager/presentation/widgets/auth/gradient_button.dart';
 import 'package:passwordmanager/presentation/widgets/auth/style_text_field.dart';
-import '../../../core/theme/app_theme.dart';
-import '../widgets/auth/gradient_button.dart';
-import '../widgets/auth/auth_background.dart';
 import 'login_page.dart';
 import 'vault_page.dart';
+import 'package:passwordmanager/core/extension/import_extensios.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -22,173 +14,56 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
-  // ── Form ───────────────────────────────────────────────────────────────────
-  final _formKey = GlobalKey<FormState>();
-  final _siteController = TextEditingController();
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
-
-  // ── State ──────────────────────────────────────────────────────────────────
-  bool _isLoading = false;
-  bool _isPasswordVisible = false;
-
-  // ── Biometrics ─────────────────────────────────────────────────────────────
-  final _localAuth = LocalAuthentication();
-
-  // ── Animations ─────────────────────────────────────────────────────────────
-  late AnimationController _entranceController;
-  late AnimationController _shieldController;
-  late Animation<double> _fadeIn;
-  late Animation<Offset> _slideUp;
-  late Animation<double> _shieldRotate;
-
-  // ── Lifecycle ──────────────────────────────────────────────────────────────
+  late final HomeController _controller;
 
   @override
   void initState() {
     super.initState();
-    _initializeAnimations();
-    _entranceController.forward();
+    _controller = HomeController(vsync: this);
+    _controller.addListener(_onControllerUpdate);
   }
 
   @override
   void dispose() {
-    _siteController.dispose();
-    _usernameController.dispose();
-    _passwordController.dispose();
-    _entranceController.dispose();
-    _shieldController.dispose();
+    _controller.removeListener(_onControllerUpdate);
+    _controller.dispose();
     super.dispose();
   }
 
-  // ── Animations ─────────────────────────────────────────────────────────────
+  // ── Event handling ─────────────────────────────────────────────────────────
 
-  void _initializeAnimations() {
-    _entranceController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1000),
-    );
-    _shieldController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 4),
-    )..repeat();
+  void _onControllerUpdate() {
+    final event = _controller.lastEvent;
+    if (event == null) return;
+    _controller.consumeEvent();
 
-    _fadeIn = CurvedAnimation(
-      parent: _entranceController,
-      curve: const Interval(0.2, 1.0, curve: Curves.easeOut),
-    );
-    _slideUp = Tween<Offset>(
-      begin: const Offset(0, 0.25),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _entranceController,
-      curve: const Interval(0.1, 1.0, curve: Curves.easeOutCubic),
-    ));
-    _shieldRotate = Tween<double>(begin: 0, end: 2 * math.pi).animate(
-      CurvedAnimation(parent: _shieldController, curve: Curves.linear),
-    );
-  }
-
-  // ── Biometric gate ─────────────────────────────────────────────────────────
-
-  /// Returns true if the user passes biometric / device-PIN auth.
-  /// Shows enrollment dialog automatically if nothing is set up.
-  Future<bool> _authenticate() async {
-    try {
-      final isSupported = await _localAuth.isDeviceSupported();
-      if (!isSupported) {
-        _showSnackBar('Device does not support authentication', isError: true);
-        return false;
-      }
-
-      final canCheck = await _localAuth.canCheckBiometrics;
-      final enrolled = await _localAuth.getAvailableBiometrics();
-      if (!canCheck || enrolled.isEmpty) {
+    switch (event.event) {
+      case HomeEvent.saveSuccess:
+        if (event.errorMessage != null) {
+          _showSnackBar(event.errorMessage!, isError: true);
+        } else {
+          _showSnackBar('Password encrypted and saved');
+        }
+      case HomeEvent.needsEnrollment:
         _showEnrollmentDialog();
-        return false;
-      }
-
-      return await _localAuth.authenticate(
-        localizedReason:
-            'Verify your identity to encrypt and save this password',
-        options: const AuthenticationOptions(
-          biometricOnly: false, // allow PIN fallback
-          stickyAuth: true,
-        ),
-      );
-    } on PlatformException catch (e) {
-      if (e.code == auth_error.notEnrolled) {
-        _showEnrollmentDialog();
-      } else if (e.code != auth_error.lockedOut &&
-          e.code != auth_error.permanentlyLockedOut) {
-        _showSnackBar('Authentication error: ${e.message}', isError: true);
-      }
-      return false;
+      case HomeEvent.logoutRequested:
+        _showLogoutDialog();
     }
   }
 
-  // ── Save password ──────────────────────────────────────────────────────────
+  // ── Navigation ─────────────────────────────────────────────────────────────
 
-  Future<void> _savePassword() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      _showSnackBar('User not logged in', isError: true);
-      return;
-    }
-
-    // ── Step 1: biometric gate ─────────────────────────────────────────────
-    final authed = await _authenticate();
-    if (!authed) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      // ── Step 2: encrypt with device-bound AES key ──────────────────────
-      final encryptedPassword = await EncryptionService.encrypt(
-        _passwordController.text.trim(),
-      );
-
-      // ── Step 3: save to Firestore — plain password intentionally blank ─
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('passwords')
-          .add({
-        'siteName': _siteController.text.trim(),
-        'user_name': _usernameController.text.trim(),
-        'password': '', // never store plaintext
-        'encrypted_password': encryptedPassword,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      _showSnackBar('Password encrypted and saved');
-      _siteController.clear();
-      _usernameController.clear();
-      _passwordController.clear();
-    } catch (e) {
-      _showSnackBar('Error saving password: $e', isError: true);
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
+  void _navigateToVault() {
+    Navigator.push(
+        context, MaterialPageRoute(builder: (_) => const VaultPage()));
   }
-
-  // ── Auth / Logout ──────────────────────────────────────────────────────────
 
   Future<void> _logout() async {
-    await FirebaseAuth.instance.signOut();
+    await _controller.logout();
     if (!mounted) return;
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const LoginPage()),
-    );
-  }
-
-  void _navigateToVault() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const VaultPage()),
     );
   }
 
@@ -265,13 +140,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             child: TextButton(
               onPressed: () async {
                 Navigator.pop(ctx);
-                try {
-                  await AppSettings.openAppSettings(
-                      type: AppSettingsType.security);
-                } catch (_) {
-                  _showSnackBar(
-                      'Go to Settings → Security to set up biometrics');
-                }
+                await BiometricService.instance.openSecuritySettings();
               },
               child: const Text('Open Settings',
                   style: TextStyle(
@@ -375,13 +244,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  // ── Helpers ────────────────────────────────────────────────────────────────
-
-  String? _validateRequired(String? value, String field) {
-    if (value == null || value.isEmpty) return 'Please enter $field';
-    return null;
-  }
-
   // ── Build ──────────────────────────────────────────────────────────────────
 
   @override
@@ -390,48 +252,52 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final user = FirebaseAuth.instance.currentUser;
 
-    return Scaffold(
-      backgroundColor: t.background,
-      body: Stack(
-        children: [
-          AuthBackground(shieldRotate: _shieldRotate, isDark: isDark),
-          SafeArea(
-            child: Column(
-              children: [
-                _buildAppBar(t, user),
-                Expanded(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: FadeTransition(
-                      opacity: _fadeIn,
-                      child: SlideTransition(
-                        position: _slideUp,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 8),
-                            _buildVaultBanner(t, user),
-                            const SizedBox(height: 28),
-                            _buildSectionHeader(
-                              t,
-                              'Add New Password',
-                              Icons.add_circle_outline_rounded,
-                            ),
-                            const SizedBox(height: 6),
-                            _buildBiometricHint(t),
-                            const SizedBox(height: 14),
-                            _buildAddPasswordCard(t),
-                            const SizedBox(height: 40),
-                          ],
+    return ListenableBuilder(
+      listenable: _controller,
+      builder: (context, _) => Scaffold(
+        backgroundColor: t.background,
+        body: Stack(
+          children: [
+            AuthBackground(
+                shieldRotate: _controller.shieldRotate, isDark: isDark),
+            SafeArea(
+              child: Column(
+                children: [
+                  _buildAppBar(t, user),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: FadeTransition(
+                        opacity: _controller.fadeIn,
+                        child: SlideTransition(
+                          position: _controller.slideUp,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 8),
+                              _buildVaultBanner(t, user),
+                              const SizedBox(height: 28),
+                              _buildSectionHeader(
+                                t,
+                                'Add New Password',
+                                Icons.add_circle_outline_rounded,
+                              ),
+                              const SizedBox(height: 6),
+                              _buildBiometricHint(t),
+                              const SizedBox(height: 14),
+                              _buildAddPasswordCard(t),
+                              const SizedBox(height: 40),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -489,7 +355,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             ),
           ),
           GestureDetector(
-            onTap: _showLogoutDialog,
+            onTap:
+                _controller.requestLogout, // ← controller, not dialog directly
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
@@ -659,49 +526,49 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         ],
       ),
       child: Form(
-        key: _formKey,
+        key: _controller.formKey,
         child: Column(
           children: [
             StyledTextField(
-              controller: _siteController,
+              controller: _controller.siteController,
               label: 'Site name',
               prefixIcon: Icons.language_rounded,
               theme: t,
-              validator: (v) => _validateRequired(v, 'site name'),
+              validator: (v) => _controller.validateRequired(v, 'site name'),
             ),
             const SizedBox(height: 14),
             StyledTextField(
-              controller: _usernameController,
+              controller: _controller.usernameController,
               label: 'Username / Email',
               prefixIcon: Icons.alternate_email_rounded,
               keyboardType: TextInputType.emailAddress,
               theme: t,
-              validator: (v) => _validateRequired(v, 'username or email'),
+              validator: (v) =>
+                  _controller.validateRequired(v, 'username or email'),
             ),
             const SizedBox(height: 14),
             StyledTextField(
-              controller: _passwordController,
+              controller: _controller.passwordController,
               label: 'Password',
               prefixIcon: Icons.lock_outline_rounded,
-              obscureText: !_isPasswordVisible,
+              obscureText: !_controller.isPasswordVisible,
               theme: t,
               suffixIcon: GestureDetector(
-                onTap: () =>
-                    setState(() => _isPasswordVisible = !_isPasswordVisible),
+                onTap: _controller.togglePasswordVisibility,
                 child: Icon(
-                  _isPasswordVisible
+                  _controller.isPasswordVisible
                       ? Icons.visibility_rounded
                       : Icons.visibility_off_rounded,
                   color: t.textHint,
                   size: 20,
                 ),
               ),
-              validator: (v) => _validateRequired(v, 'password'),
+              validator: (v) => _controller.validateRequired(v, 'password'),
             ),
             const SizedBox(height: 20),
             GradientButton(
-              onTap: _isLoading ? null : _savePassword,
-              isLoading: _isLoading,
+              onTap: _controller.isLoading ? null : _controller.savePassword,
+              isLoading: _controller.isLoading,
               label: 'Save Password Securely',
             ),
             const SizedBox(height: 12),
