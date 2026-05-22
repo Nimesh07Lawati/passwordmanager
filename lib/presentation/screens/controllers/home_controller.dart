@@ -1,6 +1,6 @@
 import 'dart:math' as math;
-import 'package:passwordmanager/core/encryption_service.dart';
 import 'package:passwordmanager/core/extension/import_extensios.dart';
+import 'package:passwordmanager/core/services/encryption_service.dart';
 
 // ── Events ─────────────────────────────────────────────────────────────────
 // The controller cannot show dialogs or snackbars directly (no BuildContext),
