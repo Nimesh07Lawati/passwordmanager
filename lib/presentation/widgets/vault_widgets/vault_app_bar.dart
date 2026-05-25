@@ -32,7 +32,7 @@ class VaultAppBar extends StatelessWidget {
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF1565C0).withOpacity(0.35),
+                  color: const Color(0xFF1565C0).withValues(alpha: 0.35),
                   blurRadius: 16,
                   offset: const Offset(0, 6),
                 ),

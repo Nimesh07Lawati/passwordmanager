@@ -119,7 +119,7 @@ class _LockIcon extends StatelessWidget {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF1565C0).withOpacity(0.4),
+              color: const Color(0xFF1565C0).withValues(alpha: 0.4),
               blurRadius: 32,
               offset: const Offset(0, 12),
             ),

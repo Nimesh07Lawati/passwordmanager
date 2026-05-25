@@ -56,7 +56,7 @@ class PasswordTile extends StatelessWidget {
         border: Border.all(color: t.borderColor, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 14,
             offset: const Offset(0, 4),
           ),
@@ -194,7 +194,7 @@ class _DetailRow extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: const Color(0xFF1565C0).withOpacity(0.1),
+                color: const Color(0xFF1565C0).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.copy_rounded,
@@ -299,7 +299,7 @@ class _PasswordRowState extends State<_PasswordRow> {
               padding: const EdgeInsets.all(6),
               margin: const EdgeInsets.only(right: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFF6A1B9A).withOpacity(0.1),
+                color: const Color(0xFF6A1B9A).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: widget.isDecrypting
@@ -326,7 +326,7 @@ class _PasswordRowState extends State<_PasswordRow> {
             child: Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: const Color(0xFF1565C0).withOpacity(0.1),
+                color: const Color(0xFF1565C0).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.copy_rounded,
@@ -353,10 +353,10 @@ class _DeleteButton extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0xFFEF5350).withOpacity(0.08),
+          color: const Color(0xFFEF5350).withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: const Color(0xFFEF5350).withOpacity(0.25),
+            color: const Color(0xFFEF5350).withValues(alpha: 0.25),
             width: 1,
           ),
         ),

@@ -19,8 +19,8 @@ class VaultEmptyState extends StatelessWidget {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    const Color(0xFF1565C0).withOpacity(0.1),
-                    const Color(0xFF6A1B9A).withOpacity(0.1),
+                    const Color(0xFF1565C0).withValues(alpha: 0.1),
+                    const Color(0xFF6A1B9A).withValues(alpha: 0.1),
                   ],
                 ),
                 shape: BoxShape.circle,
@@ -28,7 +28,7 @@ class VaultEmptyState extends StatelessWidget {
               child: Icon(
                 Icons.lock_open_rounded,
                 size: 36,
-                color: const Color(0xFF1565C0).withOpacity(0.7),
+                color: const Color(0xFF1565C0).withValues(alpha: 0.7),
               ),
             ),
             const SizedBox(height: 20),
