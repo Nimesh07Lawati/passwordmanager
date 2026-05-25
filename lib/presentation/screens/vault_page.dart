@@ -554,7 +554,9 @@ class _VaultPageState extends State<VaultPage> with TickerProviderStateMixin {
             return PasswordTile(
               siteName: data['siteName'] ?? '',
               username: data['user_name'] ?? '',
-              password: _decryptedCache[docId] ?? '••••••••',
+              // ── FIX: use the shared constant so isDecrypted check
+              //         in PasswordTile always matches correctly ──────
+              password: _decryptedCache[docId] ?? kMaskedPassword,
               docId: docId,
               uid: user.uid,
               onDelete: _confirmDelete,
