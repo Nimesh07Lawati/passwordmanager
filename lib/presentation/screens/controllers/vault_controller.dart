@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'package:local_auth/local_auth.dart';
 import 'package:passwordmanager/core/extension/import_extensios.dart';
 import 'package:local_auth/error_codes.dart' as auth_error;
 import 'package:app_settings/app_settings.dart';

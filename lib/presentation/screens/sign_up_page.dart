@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:passwordmanager/presentation/screens/controllers/sign_up_page_controller.dart';
-import 'package:passwordmanager/presentation/widgets/auth/app_input_field.dart';
+import 'package:passwordmanager/presentation/widgets/app_input_field.dart';
 import '../../../core/theme/app_theme.dart';
-import '../widgets/auth/gradient_button.dart';
-import '../widgets/auth/auth_background.dart';
-import '../widgets/auth/password_info_row.dart';
+import '../widgets/gradient_button.dart';
+import '../widgets/auth_background.dart';
+import '../widgets/password_info_row.dart';
 import 'home_page.dart';
 
 class SignUpPage extends StatefulWidget {

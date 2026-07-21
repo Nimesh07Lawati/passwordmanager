@@ -2,12 +2,12 @@ import 'package:passwordmanager/core/extension/import_extensios.dart';
 import 'package:local_auth/error_codes.dart' as auth_error;
 import 'package:passwordmanager/core/services/encryption_service.dart';
 import 'package:passwordmanager/presentation/screens/controllers/vault_controller.dart';
-import 'package:passwordmanager/presentation/widgets/vault_widgets/password_title_card.dart';
-import 'package:passwordmanager/presentation/widgets/vault_widgets/vault_app_bar.dart';
-import 'package:passwordmanager/presentation/widgets/vault_widgets/vault_empty_states.dart';
-import 'package:passwordmanager/presentation/widgets/vault_widgets/vault_lock_screen.dart';
-import 'package:passwordmanager/presentation/widgets/vault_widgets/vault_search_bar.dart';
-import '../widgets/auth/auth_background.dart';
+import 'package:passwordmanager/presentation/widgets/password_title_card.dart';
+import 'package:passwordmanager/presentation/widgets/vault_app_bar.dart';
+import 'package:passwordmanager/presentation/widgets/vault_empty_states.dart';
+import 'package:passwordmanager/presentation/widgets/vault_lock_screen.dart';
+import 'package:passwordmanager/presentation/widgets/vault_search_bar.dart';
+import '../widgets/auth_background.dart';
 
 class VaultPage extends StatefulWidget {
   const VaultPage({super.key});
@@ -554,7 +554,9 @@ class _VaultPageState extends State<VaultPage> with TickerProviderStateMixin {
             return PasswordTile(
               siteName: data['siteName'] ?? '',
               username: data['user_name'] ?? '',
-              password: _decryptedCache[docId] ?? '••••••••',
+              // ── FIX: use the shared constant so isDecrypted check
+              //         in PasswordTile always matches correctly ──────
+              password: _decryptedCache[docId] ?? kMaskedPassword,
               docId: docId,
               uid: user.uid,
               onDelete: _confirmDelete,

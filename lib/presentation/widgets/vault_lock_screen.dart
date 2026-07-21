@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:local_auth/error_codes.dart' as auth_error;
 import 'package:passwordmanager/presentation/screens/controllers/vault_controller.dart';
-import '../../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme.dart';
 
 class VaultLockScreen extends StatelessWidget {
   const VaultLockScreen({
@@ -119,7 +119,7 @@ class _LockIcon extends StatelessWidget {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF1565C0).withOpacity(0.4),
+              color: const Color(0xFF1565C0).withValues(alpha: 0.4),
               blurRadius: 32,
               offset: const Offset(0, 12),
             ),

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme.dart';
+
+// Shared sentinel so vault_page and password_tile always match
+const String kMaskedPassword = '••••••••';
 
 class PasswordTile extends StatelessWidget {
   const PasswordTile({
@@ -11,8 +14,8 @@ class PasswordTile extends StatelessWidget {
     required this.uid,
     required this.onDelete,
     required this.onCopyToClipboard,
-    Future<void> Function()? onRevealPassword,
-    required bool isDecrypting,
+    this.onRevealPassword,
+    required this.isDecrypting,
   });
 
   final String siteName;
@@ -23,6 +26,8 @@ class PasswordTile extends StatelessWidget {
   final Future<void> Function(String docId, String uid, String siteName)
       onDelete;
   final void Function(String text, String label) onCopyToClipboard;
+  final Future<void> Function()? onRevealPassword;
+  final bool isDecrypting;
 
   static const _colorPairs = [
     [Color(0xFF1565C0), Color(0xFF6A1B9A)],
@@ -51,7 +56,7 @@ class PasswordTile extends StatelessWidget {
         border: Border.all(color: t.borderColor, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 14,
             offset: const Offset(0, 4),
           ),
@@ -114,6 +119,9 @@ class PasswordTile extends StatelessWidget {
             _PasswordRow(
               t: t,
               password: password,
+              isDecrypted: password != kMaskedPassword,
+              isDecrypting: isDecrypting,
+              onRevealPassword: onRevealPassword,
               onCopy: () => onCopyToClipboard(password, 'Password'),
             ),
             const SizedBox(height: 10),
@@ -128,6 +136,7 @@ class PasswordTile extends StatelessWidget {
 }
 
 // ── Detail row (username) ─────────────────────────────────────────────────────
+
 class _DetailRow extends StatelessWidget {
   const _DetailRow({
     required this.t,
@@ -185,7 +194,7 @@ class _DetailRow extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: const Color(0xFF1565C0).withOpacity(0.1),
+                color: const Color(0xFF1565C0).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.copy_rounded,
@@ -199,11 +208,22 @@ class _DetailRow extends StatelessWidget {
 }
 
 // ── Password row with show/hide toggle ───────────────────────────────────────
+
 class _PasswordRow extends StatefulWidget {
-  const _PasswordRow(
-      {required this.t, required this.password, required this.onCopy});
+  const _PasswordRow({
+    required this.t,
+    required this.password,
+    required this.isDecrypted,
+    required this.isDecrypting,
+    required this.onRevealPassword,
+    required this.onCopy,
+  });
+
   final AppThemeExtension t;
   final String password;
+  final bool isDecrypted;
+  final bool isDecrypting;
+  final Future<void> Function()? onRevealPassword;
   final VoidCallback onCopy;
 
   @override
@@ -214,7 +234,18 @@ class _PasswordRowState extends State<_PasswordRow> {
   bool _visible = false;
 
   @override
+  void didUpdateWidget(_PasswordRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If the vault was locked and password reverted to dots, hide again
+    if (!widget.isDecrypted) {
+      _visible = false;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final showText = widget.isDecrypted && _visible;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
@@ -240,41 +271,62 @@ class _PasswordRowState extends State<_PasswordRow> {
                   ),
                 ),
                 Text(
-                  _visible ? widget.password : '••••••••••••',
+                  showText ? widget.password : '••••••••••••',
                   style: TextStyle(
                     fontSize: 13,
                     color: widget.t.textPrimary,
                     fontWeight: FontWeight.w500,
-                    letterSpacing: _visible ? 0 : 2,
+                    letterSpacing: showText ? 0 : 2,
                   ),
                 ),
               ],
             ),
           ),
+          // ── Eye / spinner button ──────────────────────────────────────
           GestureDetector(
-            onTap: () => setState(() => _visible = !_visible),
+            onTap: widget.isDecrypting
+                ? null
+                : () {
+                    if (!widget.isDecrypted) {
+                      // Trigger biometric prompt + decryption in parent
+                      widget.onRevealPassword?.call();
+                    } else {
+                      // Already decrypted — just toggle visibility locally
+                      setState(() => _visible = !_visible);
+                    }
+                  },
             child: Container(
               padding: const EdgeInsets.all(6),
               margin: const EdgeInsets.only(right: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFF6A1B9A).withOpacity(0.1),
+                color: const Color(0xFF6A1B9A).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(
-                _visible
-                    ? Icons.visibility_off_rounded
-                    : Icons.visibility_rounded,
-                size: 14,
-                color: const Color(0xFF6A1B9A),
-              ),
+              child: widget.isDecrypting
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 1.5,
+                        valueColor: AlwaysStoppedAnimation(Color(0xFF6A1B9A)),
+                      ),
+                    )
+                  : Icon(
+                      showText
+                          ? Icons.visibility_off_rounded
+                          : Icons.visibility_rounded,
+                      size: 14,
+                      color: const Color(0xFF6A1B9A),
+                    ),
             ),
           ),
+          // ── Copy button ───────────────────────────────────────────────
           GestureDetector(
             onTap: widget.onCopy,
             child: Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: const Color(0xFF1565C0).withOpacity(0.1),
+                color: const Color(0xFF1565C0).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.copy_rounded,
@@ -288,6 +340,7 @@ class _PasswordRowState extends State<_PasswordRow> {
 }
 
 // ── Delete button ─────────────────────────────────────────────────────────────
+
 class _DeleteButton extends StatelessWidget {
   const _DeleteButton({required this.onTap});
   final VoidCallback onTap;
@@ -300,10 +353,10 @@ class _DeleteButton extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: const Color(0xFFEF5350).withOpacity(0.08),
+          color: const Color(0xFFEF5350).withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: const Color(0xFFEF5350).withOpacity(0.25),
+            color: const Color(0xFFEF5350).withValues(alpha: 0.25),
             width: 1,
           ),
         ),
