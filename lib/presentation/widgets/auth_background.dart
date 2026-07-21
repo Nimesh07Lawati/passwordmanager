@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:passwordmanager/presentation/widgets/animator/orbit_painter.dart';
+import 'package:passwordmanager/presentation/widgets/orbit_painter.dart';
 
 class AuthBackground extends StatelessWidget {
   final Animation<double> shieldRotate;

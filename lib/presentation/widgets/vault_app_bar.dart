@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:passwordmanager/presentation/screens/controllers/vault_controller.dart';
-import '../../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme.dart';
 
 class VaultAppBar extends StatelessWidget {
   const VaultAppBar({

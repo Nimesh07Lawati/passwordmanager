@@ -1,8 +1,8 @@
 import 'package:passwordmanager/core/extension/import_extensios.dart';
 import 'package:passwordmanager/presentation/screens/controllers/login_controller.dart';
-import 'package:passwordmanager/presentation/widgets/auth/app_input_field.dart';
-import '../widgets/auth/gradient_button.dart';
-import '../widgets/auth/auth_background.dart';
+import 'package:passwordmanager/presentation/widgets/app_input_field.dart';
+import '../widgets/gradient_button.dart';
+import '../widgets/auth_background.dart';
 import 'sign_up_page.dart';
 import 'home_page.dart';
 

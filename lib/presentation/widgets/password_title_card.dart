@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme.dart';
 
 // Shared sentinel so vault_page and password_tile always match
 const String kMaskedPassword = '••••••••';

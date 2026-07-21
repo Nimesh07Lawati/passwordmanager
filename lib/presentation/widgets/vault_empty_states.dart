@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_theme.dart';
 
 class VaultEmptyState extends StatelessWidget {
   const VaultEmptyState({super.key});
