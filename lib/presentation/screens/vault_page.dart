@@ -2,6 +2,8 @@ import 'package:passwordmanager/core/extension/import_extensios.dart';
 import 'package:local_auth/error_codes.dart' as auth_error;
 import 'package:passwordmanager/core/services/encryption_service.dart';
 import 'package:passwordmanager/presentation/screens/controllers/vault_controller.dart';
+import 'package:passwordmanager/presentation/screens/master_password_setup_page.dart';
+import 'package:passwordmanager/presentation/screens/master_password_unlock_page.dart';
 import 'package:passwordmanager/presentation/widgets/password_title_card.dart';
 import 'package:passwordmanager/presentation/widgets/vault_app_bar.dart';
 import 'package:passwordmanager/presentation/widgets/vault_empty_states.dart';
@@ -304,7 +306,7 @@ class _VaultPageState extends State<VaultPage> with TickerProviderStateMixin {
       final authed = await _authenticateForDecrypt();
       if (!authed) return;
 
-      // ── Step 2: decrypt with device-bound AES key ────────────────────────
+      // ── Step 2: decrypt with the master-password-derived AES key ─────────
       final plain = await EncryptionService.decrypt(encryptedPassword);
 
       // ── Step 3: cache + show ─────────────────────────────────────────────
@@ -312,9 +314,21 @@ class _VaultPageState extends State<VaultPage> with TickerProviderStateMixin {
         setState(() => _decryptedCache[docId] = plain);
         _showDecryptedBottomSheet(siteName: siteName, plainPassword: plain);
       }
+    } on StateError {
+      // No key cached — shouldn't normally happen since the vault content
+      // is only shown once vaultKeyReady is true, but if the local cache
+      // was cleared mid-session, drop back to the master-password prompt
+      // instead of showing a confusing decrypt error.
+      if (mounted) {
+        await _ctrl.checkVaultKeyStatus();
+        _showSnackBar(
+          'Your vault key is no longer available — please re-enter your master password.',
+          isError: true,
+        );
+      }
     } on FormatException {
       _showSnackBar(
-        'Cannot decrypt — this password may have been saved on a different device.',
+        'Cannot decrypt — this entry appears to be corrupted.',
         isError: true,
       );
     } catch (e) {
@@ -471,7 +485,7 @@ class _VaultPageState extends State<VaultPage> with TickerProviderStateMixin {
           AuthBackground(shieldRotate: _ctrl.shieldRotate, isDark: isDark),
           SafeArea(
             child: _ctrl.isAuthenticated
-                ? _buildVaultContent()
+                ? _buildPostBiometricContent()
                 : VaultLockScreen(
                     controller: _ctrl,
                     onAuthenticated: () {},
@@ -482,6 +496,38 @@ class _VaultPageState extends State<VaultPage> with TickerProviderStateMixin {
         ],
       ),
     );
+  }
+
+  /// Biometrics passed — but that only unlocked the app screen. Whether
+  /// the vault's contents are actually usable depends on whether the
+  /// AES key is cached locally (vaultKeyReady). Route accordingly.
+  Widget _buildPostBiometricContent() {
+    if (_ctrl.isCheckingVaultKey) {
+      return const Center(
+        child: SizedBox(
+          width: 28,
+          height: 28,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.5,
+            valueColor: AlwaysStoppedAnimation(Color(0xFF1565C0)),
+          ),
+        ),
+      );
+    }
+
+    if (_ctrl.vaultKeyReady) {
+      return _buildVaultContent();
+    }
+
+    return _ctrl.hasMasterPasswordSetup
+        ? MasterPasswordUnlockScreen(
+            controller: _ctrl,
+            onShowSnackBar: _showSnackBar,
+          )
+        : MasterPasswordSetupScreen(
+            controller: _ctrl,
+            onShowSnackBar: _showSnackBar,
+          );
   }
 
   Widget _buildVaultContent() {
@@ -554,8 +600,6 @@ class _VaultPageState extends State<VaultPage> with TickerProviderStateMixin {
             return PasswordTile(
               siteName: data['siteName'] ?? '',
               username: data['user_name'] ?? '',
-              // ── FIX: use the shared constant so isDecrypted check
-              //         in PasswordTile always matches correctly ──────
               password: _decryptedCache[docId] ?? kMaskedPassword,
               docId: docId,
               uid: user.uid,

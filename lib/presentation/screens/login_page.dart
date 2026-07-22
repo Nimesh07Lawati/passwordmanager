@@ -177,7 +177,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.45),
+            color: AppColors.primary.withValues(alpha: 0.45),
             blurRadius: 28,
             offset: const Offset(0, 10),
           ),
@@ -231,7 +231,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   Widget _buildPasswordField(AppThemeExtension t) {
     return AppInputField(
       controller: _controller.passwordController,
-      label: 'Master password',
+      label: 'password',
       prefixIcon: Icons.lock_outline_rounded,
       obscureText: !_controller.isPasswordVisible,
       theme: t,

@@ -18,14 +18,14 @@ class PasswordInfoRow extends StatelessWidget {
           Icon(
             Icons.info_outline_rounded,
             size: 14,
-            color: theme.textHint.withOpacity(0.7),
+            color: theme.textHint.withValues(alpha: 0.7),
           ),
           const SizedBox(width: 6),
           Text(
             'Password must be at least 6 characters',
             style: TextStyle(
               fontSize: 11,
-              color: theme.textHint.withOpacity(0.7),
+              color: theme.textHint.withValues(alpha: 0.7),
               fontWeight: FontWeight.w400,
             ),
           ),

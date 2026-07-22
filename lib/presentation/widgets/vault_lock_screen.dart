@@ -150,8 +150,8 @@ class _UnlockButton extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: authenticating
               ? LinearGradient(colors: [
-                  const Color(0xFF1565C0).withOpacity(0.5),
-                  const Color(0xFF6A1B9A).withOpacity(0.5),
+                  const Color(0xFF1565C0).withValues(alpha: 0.5),
+                  const Color(0xFF6A1B9A).withValues(alpha: 0.5),
                 ])
               : const LinearGradient(
                   colors: [Color(0xFF1565C0), Color(0xFF6A1B9A)],
@@ -163,7 +163,7 @@ class _UnlockButton extends StatelessWidget {
               ? []
               : [
                   BoxShadow(
-                    color: const Color(0xFF1565C0).withOpacity(0.4),
+                    color: const Color(0xFF1565C0).withValues(alpha: 0.4),
                     blurRadius: 20,
                     offset: const Offset(0, 8),
                   ),
@@ -220,7 +220,7 @@ class _BiometricHint extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.warning_amber_rounded,
-              size: 13, color: const Color(0xFFEF5350).withOpacity(0.8)),
+              size: 13, color: const Color(0xFFEF5350).withValues(alpha: 0.8)),
           const SizedBox(width: 6),
           Text('You will be redirected to device settings',
               style: TextStyle(fontSize: 12, color: t.textDisabled)),
