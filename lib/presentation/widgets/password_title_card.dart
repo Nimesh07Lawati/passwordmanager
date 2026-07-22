@@ -236,9 +236,13 @@ class _PasswordRowState extends State<_PasswordRow> {
   @override
   void didUpdateWidget(_PasswordRow oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // If the vault was locked and password reverted to dots, hide again
     if (!widget.isDecrypted) {
+      // If the vault was locked and password reverted to dots, hide again
       _visible = false;
+    } else if (!oldWidget.isDecrypted && widget.isDecrypted) {
+      // Decryption just completed as a result of the eye-icon tap —
+      // reveal immediately instead of requiring a second tap
+      _visible = true;
     }
   }
 
