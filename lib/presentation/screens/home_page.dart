@@ -46,6 +46,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         }
       case HomeEvent.needsEnrollment:
         _showEnrollmentDialog();
+      case HomeEvent.needsMasterPassword:
+        _showNeedsMasterPasswordDialog();
       case HomeEvent.logoutRequested:
         _showLogoutDialog();
     }
@@ -143,6 +145,80 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 await BiometricService.instance.openSecuritySettings();
               },
               child: const Text('Open Settings',
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.w700)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Shown when the user tries to save a password but no vault key is
+  /// cached locally yet (fresh install / new device — they haven't been
+  /// through the master-password setup or recovery flow in VaultPage
+  /// yet). Sends them there; their in-progress form is left untouched
+  /// so they can come straight back and hit save again afterward.
+  void _showNeedsMasterPasswordDialog() {
+    if (!mounted) return;
+    final t = context.appTheme;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: t.surfaceHigh,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF1565C0), Color(0xFF6A1B9A)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.vpn_key_rounded,
+                  color: Colors.white, size: 18),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Vault Setup Needed',
+                style: TextStyle(
+                    color: t.textPrimary,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Before saving passwords, open your vault once to set up (or '
+          're-enter) your master password. Your details here won\'t be lost.',
+          style: TextStyle(color: t.textSecondary, fontSize: 13, height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Not Now',
+                style: TextStyle(
+                    color: t.textDisabled, fontWeight: FontWeight.w600)),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                  colors: [Color(0xFF1565C0), Color(0xFF6A1B9A)]),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _navigateToVault();
+              },
+              child: const Text('Open Vault',
                   style: TextStyle(
                       color: Colors.white, fontWeight: FontWeight.w700)),
             ),
