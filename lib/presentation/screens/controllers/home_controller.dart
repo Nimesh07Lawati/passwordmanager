@@ -9,6 +9,7 @@ import 'package:passwordmanager/core/services/encryption_service.dart';
 enum HomeEvent {
   saveSuccess,
   needsEnrollment,
+  needsMasterPassword,
   logoutRequested,
 }
 
@@ -114,6 +115,18 @@ class HomeController with ChangeNotifier {
         _emit(HomeEvent.saveSuccess,
             errorMessage: authResult.errorMessage ?? 'Authentication failed');
       }
+      return;
+    }
+
+    // Step 1.5: vault key gate — biometrics passing says nothing about
+    // whether the AES key is actually available. This is true on a fresh
+    // install/new device before the user has ever visited the vault and
+    // set up or re-entered their master password. Rather than let
+    // encrypt() throw, send the user to set that up first — the form
+    // is left untouched so they can come straight back and retry.
+    final keyReady = await EncryptionService.hasCachedKey();
+    if (!keyReady) {
+      _emit(HomeEvent.needsMasterPassword);
       return;
     }
 
